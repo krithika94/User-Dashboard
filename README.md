@@ -20,7 +20,7 @@ Responsive Design: Optimized for mobile, tablet, and desktop screens.
 Clone the project
 
 ```bash
-  git clone https://link-to-project
+  git clone https://github.com/krithika94/User-Dashboard.git
 ```
 
 Go to the project directory
