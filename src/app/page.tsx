@@ -1,101 +1,135 @@
-import Image from "next/image";
+'use client';
+import { useState } from 'react';
+import { useUsers } from '../hooks/useUsers';
+import { usePosts } from '../hooks/usePosts';
+import { UserCard } from '../components/usercard';
+import { PostList } from '../components/postlist';
+import { ErrorMessage } from '../components/errormessage';
+import { LoadingSpinner } from '@/components/loadingspinner';
+import UserSkeleton from '../components/skeletons/userskeleton';
+import PostsSkeleton from '../components/skeletons/postskeleton';
 
-export default function Home() {
+export default function Dashboard() {
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchUser, setSearchUser] = useState('');
+  const [sortData, setSortData] = useState<'name' | 'company'>('name');
+  const postsPerPage = 3;
+
+  // Users React Query
+  const { data: users, isLoading: usersLoading, error: usersError } = useUsers();
+
+  // Posts React Query
+  const {
+    data: posts = [],
+    isLoading: postsLoading,
+    error: postsError,
+  } = usePosts(selectedUserId || 0);
+
+  // Filter users based on search user
+  const filteredUsers = users?.filter((user) => {
+    const nameMatch = user.name.toLowerCase().includes(searchUser.toLowerCase());
+    const emailMatch = user.email.toLowerCase().includes(searchUser.toLowerCase());
+    return nameMatch || emailMatch;
+  });
+
+  // Sort data based on name or email
+  const sortedList = filteredUsers?.sort((a, b) => {
+    if (sortData === 'name') {
+      return a.name.localeCompare(b.name); // Sort by name
+    } else if (sortData === 'company') {
+      return a.company.name.localeCompare(b.company.name); // Sort by company name
+    }
+    return 0;
+  });
+
+  // Pagination posts
+  const indexOfLastPost = currentPage * postsPerPage;
+  const indexOfFirstPost = indexOfLastPost - postsPerPage;
+  const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
+  if (usersLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (usersError || postsError) {
+    return <ErrorMessage message={(usersError as Error)?.message || (postsError as Error)?.message} />;
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="container mx-auto px-4 mb-6">
+      <h1 className="text-xl font-semibold mt-2 mb-4">Dashboard</h1>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Users Section */}
+        <div className="w-full lg:w-1/3">
+          <h2 className="text-base font-semibold text-gray-700">Users</h2>
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-3 mt-2 mb-4">
+            {/* Search Input */}
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchUser}
+              onChange={(e) => setSearchUser(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-lg text-sm text-gray-500"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {/* Sort Dropdown */}
+            <select
+              value={sortData}
+              onChange={(e) => setSortData(e.target.value as 'name' | 'company')}
+              className="w-full p-2 border border-gray-300 rounded-lg text-sm text-gray-500"
+            >
+              <option value="name">Sort by Name</option>
+              <option value="company">Sort by Company</option>
+            </select>
+          </div>
+          {usersLoading ? (
+            <UserSkeleton />
+          ) : sortedList && sortedList.length > 0 ? (
+            sortedList.map((user) => (
+              <UserCard key={user.id} user={user} onClick={() => setSelectedUserId(user.id)} />
+            ))
+          ) : (
+            <p>No users found...</p>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Posts Section */}
+        <div className="w-full lg:w-2/3">
+          <h2 className="text-base font-semibold text-gray-700">Posts</h2>
+          {selectedUserId ? (
+            postsLoading ? (
+              <PostsSkeleton />
+            ) : posts && posts.length > 0 ? (
+              <>
+                <PostList currentPosts={currentPosts} />
+                <div className="join mt-4 flex-wrap">
+                  {Array.from({ length: Math.ceil(posts.length / postsPerPage) }, (_, i) => (
+                    <button
+                      key={i + 1}
+                      className={`join-item btn ${currentPage === i + 1 ? 'btn-active' : ''}`}
+                      onClick={() => handlePageChange(i + 1)}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-700">No posts found for this user.</p>
+            )
+          ) : (
+            <p className="text-gray-700">Select a user to view their posts</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
